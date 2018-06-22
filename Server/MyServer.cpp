@@ -32,14 +32,16 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
 /*virtual*/ void MyServer::slotNewConnection()
 {
     QTcpSocket* pClientSocket = m_ptcpServer->nextPendingConnection();
+
     connect(pClientSocket, SIGNAL(disconnected()),
             pClientSocket, SLOT(deleteLater())
-           );
+           );//Тут еще подключить слот, который удалял бы этого человека из списка сокетов
     connect(pClientSocket, SIGNAL(readyRead()),
             this,          SLOT(slotReadClient())
            );
-
+//todo: Послать сообщение с контактами в сети
     sendToClient(pClientSocket, "Server Response: Connected!");
+    sockets<<pClientSocket;
 }
 void MyServer::slotReadClient()
 {
@@ -68,8 +70,11 @@ void MyServer::slotReadClient()
 
         m_nNextBlockSize = 0;
 
-        sendToClient(pClientSocket,
+        /*sendToClient(pClientSocket,
                      "Server Response: Received \"" + str + "\""
+                    );*/
+        sendToClient(sockets,
+                     name+": "+ str
                     );
     }
 }
@@ -84,4 +89,19 @@ void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
     out << quint16(arrBlock.size() - sizeof(quint16));
 
     pSocket->write(arrBlock);
+}
+void MyServer::sendToClient(QList<QTcpSocket*> list, const QString& str)
+{
+    foreach(QTcpSocket * pSocket, list)
+    {
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0) << QTime::currentTime() << str;
+
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    pSocket->write(arrBlock);
+    }
 }

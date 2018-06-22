@@ -14,7 +14,7 @@ private:
 
     QLineEdit *addressLineEdit= new QLineEdit("localhost");
     QLineEdit *portLineEdit= new QLineEdit("2323");
-    QLineEdit *nameLineEdit= new QLineEdit();
+    QLineEdit *nameLineEdit= new QLineEdit("Алиса");
 signals:
  void SendDataToMainWindow(QList<QString>);
 public slots:
