@@ -4,15 +4,15 @@
 #include <QLayout>
 #include <QLabel>
 #include <QTime>
-MyClient::MyClient(const QString& strHost,
-                   int            nPort,
+MyClient::MyClient(
+
                    QWidget*       pwgt /*=0*/
                   ) : QWidget(pwgt)
                     , m_nNextBlockSize(0)
 {
     m_pTcpSocket = new QTcpSocket(this);
 
-    m_pTcpSocket->connectToHost(strHost, nPort);
+
     connect(m_pTcpSocket, SIGNAL(connected()), SLOT(slotConnected()));
     connect(m_pTcpSocket, SIGNAL(readyRead()), SLOT(slotReadyRead()));
     connect(m_pTcpSocket, SIGNAL(error(QAbstractSocket::SocketError)),
@@ -79,7 +79,7 @@ void MyClient::slotSendToServer()
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) << QTime::currentTime() << m_ptxtInput->text();
+    out << quint16(0) << QTime::currentTime()<<name << m_ptxtInput->text();
 
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
@@ -89,5 +89,11 @@ void MyClient::slotSendToServer()
 }
 void MyClient::slotConnected()
 {
-    m_ptxtInfo->append("Received the connected() signal");
+    m_ptxtInfo->append("Подключение к серверу прошло успешно");
+}
+void MyClient::slotRecieveData(QList<QString> list)
+{
+    m_pTcpSocket->connectToHost(list[0], list[1].toInt());
+    name=list[2];
+this->show();
 }

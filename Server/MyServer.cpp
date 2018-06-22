@@ -59,10 +59,11 @@ void MyServer::slotReadClient()
         }
         QTime   time;
         QString str;
-        in >> time >> str;
+        QString name;
+        in >> time >>name>> str;
 
         QString strMessage =
-            time.toString() + " " + "Client has sended - " + str;
+            time.toString() + " " + name+" has sended - " + str;
         m_ptxt->append(strMessage);
 
         m_nNextBlockSize = 0;

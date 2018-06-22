@@ -14,14 +14,17 @@ private:
     QTextEdit*  m_ptxtInfo;
     QLineEdit*  m_ptxtInput;
     quint16     m_nNextBlockSize;
+    QString     name;
 
 public:
-    MyClient(const QString& strHost, int nPort, QWidget* pwgt = 0) ;
+    MyClient(QWidget* pwgt = 0);
 
 private slots:
     void slotReadyRead   (                            );
     void slotError       (QAbstractSocket::SocketError);
     void slotSendToServer(                            );
     void slotConnected   (                            );
+    void slotRecieveData(QList<QString>);
+
 };
 #endif  //_MyClient_h_

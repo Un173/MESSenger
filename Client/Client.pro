@@ -25,7 +25,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        myclient.cpp
+        myclient.cpp \
+    connectionwidget.cpp
 
 HEADERS += \
-        myclient.h
+        myclient.h \
+    connectionwidget.h
+
+FORMS +=
