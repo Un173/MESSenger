@@ -6,11 +6,17 @@
 #include <QTextEdit.h>
 #include <QTcpSocket.h>
 
+class User
+{
+public:
+    QString name;
+    QTcpSocket* socket;
 
+};
 class MyServer : public QWidget {
 Q_OBJECT
 public:
-    QList<QTcpSocket*> sockets;
+    QList<User> users;
     QTcpServer* m_ptcpServer;
     QTextEdit*  m_ptxt;
     quint16     m_nNextBlockSize;
@@ -19,9 +25,13 @@ public:
 
 private:
     void sendToClient(QTcpSocket* pSocket, const QString& str);
-void sendToClient(QList<QTcpSocket*> list, const QString& str);
+void sendToClient(QList<User> list, const QString& str);
+void sendToClient(User user, QList<User> list);
+QTcpSocket* findSocket(QString str);
+User findUser( QTcpSocket* socket);
 public slots:
     virtual void slotNewConnection();
             void slotReadClient   ();
 };
+
 

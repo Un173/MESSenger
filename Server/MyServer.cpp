@@ -40,8 +40,14 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
             this,          SLOT(slotReadClient())
            );
 //todo: Послать сообщение с контактами в сети
-    sendToClient(pClientSocket, "Server Response: Connected!");
-    sockets<<pClientSocket;
+    //sendToClient(pClientSocket, "Server Response: Connected!");
+
+   User user;
+   user.socket=pClientSocket;
+
+    //sendToClient(user, users);
+ users<<user;
+
 }
 void MyServer::slotReadClient()
 {
@@ -59,23 +65,46 @@ void MyServer::slotReadClient()
         if (pClientSocket->bytesAvailable() < m_nNextBlockSize) {
             break;
         }
+
+         int   mode;
         QTime   time;
         QString str;
         QString name;
-        in >> time >>name>> str;
+        in>>mode;
 
-        QString strMessage =
-            time.toString() + " " + name+" has sended - " + str;
-        m_ptxt->append(strMessage);
 
-        m_nNextBlockSize = 0;
+        switch (mode)
+        {
+        case 1:
+        {
+            in>>name;
+            for (User &user: users) {
+                if(user.socket==pClientSocket)  user.name=name;
 
-        /*sendToClient(pClientSocket,
-                     "Server Response: Received \"" + str + "\""
-                    );*/
-        sendToClient(sockets,
-                     name+": "+ str
-                    );
+            }
+              for (User &user: users) {
+       sendToClient(user, users);
+            }
+            break;
+        }
+        case 0:
+        {
+            in >> time >>name>> str;
+            QString strMessage =
+                time.toString() + " " + name+" has sended - " + str;
+            m_ptxt->append(strMessage);
+
+            /*sendToClient(pClientSocket,
+                         "Server Response: Received \"" + str + "\""
+                        );*/
+            sendToClient(users,
+                         name+": "+ str
+                        );
+            break;
+        }
+        }
+
+         m_nNextBlockSize = 0;
     }
 }
 void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
@@ -90,9 +119,9 @@ void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
 
     pSocket->write(arrBlock);
 }
-void MyServer::sendToClient(QList<QTcpSocket*> list, const QString& str)
+void MyServer::sendToClient(QList<User> list, const QString& str)
 {
-    foreach(QTcpSocket * pSocket, list)
+    foreach(User user, list)
     {
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
@@ -102,6 +131,31 @@ void MyServer::sendToClient(QList<QTcpSocket*> list, const QString& str)
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
 
-    pSocket->write(arrBlock);
+    user.socket->write(arrBlock);
     }
 }
+void MyServer::sendToClient(User user, QList<User> list)
+{
+    if(list.length()==0) return;
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0)<<2;//режим отправки контактов
+QList<QString> names;
+    foreach (User u, list)
+    {
+        if(u.name!=user.name&&u.name!="")
+        names<<u.name;
+    }
+     out<<names;
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    user.socket->write(arrBlock);
+
+}
+QTcpSocket* findSocket(QString str)
+{
+
+}
+

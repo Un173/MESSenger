@@ -21,6 +21,6 @@ void ConnectionWidget::OKButtonClicked()
 {
     QList<QString> list;
     list<<addressLineEdit->text()<<portLineEdit->text()<<nameLineEdit->text();
-   emit SendDataToMainWindow(list);
+   if(emit SendDataToMainWindow(list)==true)
     this->close();
 }

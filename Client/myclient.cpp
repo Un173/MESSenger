@@ -1,9 +1,5 @@
 #include"myclient.h"
-#include<QPushButton>
-#include <QMessageBox>
-#include <QLayout>
-#include <QLabel>
-#include <QTime>
+
 MyClient::MyClient(
 
                    QWidget*       pwgt /*=0*/
@@ -30,9 +26,13 @@ MyClient::MyClient(
     QPushButton* pcmd = new QPushButton("&Send");
     connect(pcmd, SIGNAL(clicked()), SLOT(slotSendToServer()));
 
-    //Layout setup
+     listWidget = new QListWidget(this);
+    /*new QListWidgetItem(tr("Oak"), listWidget);
+        new QListWidgetItem(tr("Fir"), listWidget);
+        new QListWidgetItem(tr("Pine"), listWidget);*/
     QVBoxLayout* pvbxLayout = new QVBoxLayout;
     pvbxLayout->addWidget(new QLabel("<H1>Client</H1>"));
+    pvbxLayout->addWidget(listWidget);
     pvbxLayout->addWidget(m_ptxtInfo);
     pvbxLayout->addWidget(m_ptxtInput);
     pvbxLayout->addWidget(pcmd);
@@ -53,11 +53,34 @@ void MyClient::slotReadyRead()
         if (m_pTcpSocket->bytesAvailable() < m_nNextBlockSize) {
             break;
         }
-        QTime   time;
-        QString str;
-        in >> time >> str;
+        int mode;
+        in>>mode;
+        switch(mode)
+        {
+        case 0://Получение сообщения
+        {
+            QTime   time;
+            QString str;
+            in >> time >> str;
 
-        m_ptxtInfo->append(time.toString() + " " + str);
+            m_ptxtInfo->append(time.toString() + " " + str);
+
+            break;
+        }
+        case 2://Получение контактов
+        {
+            QList<QString> list;
+            in>>list;
+            listWidget->clear();
+            foreach (QString str, list) {
+
+                  new QListWidgetItem(str, listWidget);
+            }
+
+
+            break;
+        }
+        }
         m_nNextBlockSize = 0;
     }
 }
@@ -74,12 +97,12 @@ void MyClient::slotError(QAbstractSocket::SocketError err)
                     );
     m_ptxtInfo->append(strError);
 }
-void MyClient::slotSendToServer()
+void MyClient::slotSendToServer()// обычное сообщение
 {
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) << QTime::currentTime()<<name << m_ptxtInput->text();
+    out << quint16(0) <<0<< QTime::currentTime()<<name << m_ptxtInput->text();
 
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
@@ -87,13 +110,46 @@ void MyClient::slotSendToServer()
     m_pTcpSocket->write(arrBlock);
     m_ptxtInput->setText("");
 }
+void MyClient::sendNameToServer()
+{
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0) <<1<<name;
+
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    m_pTcpSocket->write(arrBlock);
+
+}
+void MyClient::getListOfUsers()
+{
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    bool mode=true;
+    out << quint16(0) <<mode<<name;// true- значит запрос списка контактов
+
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    m_pTcpSocket->write(arrBlock);
+
+}
 void MyClient::slotConnected()
 {
     m_ptxtInfo->append("Подключение к серверу прошло успешно");
 }
-void MyClient::slotRecieveData(QList<QString> list)
+bool MyClient::slotRecieveData(QList<QString> list)
 {
-    m_pTcpSocket->connectToHost(list[0], list[1].toInt());
+    //проверка на доступность и отправка обратно
+
+   // emit getListOfUsers();
     name=list[2];
+    m_pTcpSocket->connectToHost(list[0], list[1].toInt());
+   sendNameToServer();
+
 this->show();
+    return true;
 }
