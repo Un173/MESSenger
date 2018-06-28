@@ -20,6 +20,7 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
             this,         SLOT(slotNewConnection())
            );
 
+
     m_ptxt = new QTextEdit;
     m_ptxt->setReadOnly(true);
 
@@ -29,24 +30,45 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
     pvbxLayout->addWidget(m_ptxt);
     setLayout(pvbxLayout);
 }
-/*virtual*/ void MyServer::slotNewConnection()
+void MyServer::slotNewConnection()
 {
     QTcpSocket* pClientSocket = m_ptcpServer->nextPendingConnection();
 
+
     connect(pClientSocket, SIGNAL(disconnected()),
             pClientSocket, SLOT(deleteLater())
-           );//Тут еще подключить слот, который удалял бы этого человека из списка сокетов
+           );
+
+
     connect(pClientSocket, SIGNAL(readyRead()),
             this,          SLOT(slotReadClient())
            );
-//todo: Послать сообщение с контактами в сети
+
     //sendToClient(pClientSocket, "Server Response: Connected!");
 
    User user;
    user.socket=pClientSocket;
 
-    //sendToClient(user, users);
+   connect(pClientSocket, SIGNAL(disconnected()),
+           this, SLOT(handleDisconnect())
+          );
+
  users<<user;
+  sendToClient(user, users);
+
+}
+void MyServer::handleDisconnect()
+{
+    auto sender=QObject::sender();
+
+     for(int i=0;i<users.length();i++)
+     {
+         if(sender==users[i].socket) {users.removeAt(i);break;}
+
+     }
+    for (User &user: users) {
+      sendToClient(user, users);
+}
 
 }
 void MyServer::slotReadClient()
@@ -75,19 +97,30 @@ void MyServer::slotReadClient()
 
         switch (mode)
         {
-        case 1:
+        case 1://Подключился пользователь
         {
             in>>name;
+             for (User &user: users)
+                 if(user.name==name)
+                 {
+                     sendToClient(pClientSocket, false);
+                     m_nNextBlockSize = 0;
+                     return;
+                 }
+                 sendToClient(pClientSocket, true);
             for (User &user: users) {
                 if(user.socket==pClientSocket)  user.name=name;
 
             }
+            m_ptxt->clear();
               for (User &user: users) {
-       sendToClient(user, users);
+
+                  m_ptxt->append(user.name+",");
+                sendToClient(user, users);
             }
             break;
         }
-        case 0:
+        case 0:// Обычное сообщение
         {
             in >> time >>name>> str;
             QString strMessage =
@@ -102,6 +135,7 @@ void MyServer::slotReadClient()
                         );
             break;
         }
+
         }
 
          m_nNextBlockSize = 0;
@@ -154,8 +188,17 @@ QList<QString> names;
     user.socket->write(arrBlock);
 
 }
-QTcpSocket* findSocket(QString str)
+void MyServer::sendToClient(QTcpSocket* pSocket, bool mode)
 {
 
-}
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0)<<-1<<mode;//режим подтверждения логина
 
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+   pSocket->write(arrBlock);
+
+}

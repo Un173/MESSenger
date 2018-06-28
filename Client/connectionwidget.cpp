@@ -21,6 +21,24 @@ void ConnectionWidget::OKButtonClicked()
 {
     QList<QString> list;
     list<<addressLineEdit->text()<<portLineEdit->text()<<nameLineEdit->text();
-   if(emit SendDataToMainWindow(list)==true)
-    this->close();
+   emit SendDataToMainWindow(list);
+    //this->close();
+}
+void ConnectionWidget::dataReturned(int result)
+{
+    switch(result)
+    {
+    case 0:
+    {
+        this->close();
+        break;
+    }
+    case 1:
+    {
+        QMessageBox messageBox;
+        messageBox.critical(0,"Ошибка","Выбранное имя уже занято");
+        messageBox.setFixedSize(500,200);
+        break;
+    }
+    }
 }

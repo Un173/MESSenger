@@ -69,16 +69,32 @@ void MyClient::slotReadyRead()
         }
         case 2://Получение контактов
         {
-            QList<QString> list;
-            in>>list;
+
+            users.clear();
+            in>>users;
+
             listWidget->clear();
-            foreach (QString str, list) {
+            foreach (QString str, users) {
 
                   new QListWidgetItem(str, listWidget);
             }
 
-
             break;
+        }
+        case -1:
+        {
+            bool alowance;
+            in>>alowance;
+            if(alowance==true)
+            {
+                emit sendAllowanceResult(0);
+                this->show();
+                 m_nNextBlockSize = 0;
+                 return;
+            }
+
+                emit sendAllowanceResult(1);
+            m_pTcpSocket->disconnectFromHost();
         }
         }
         m_nNextBlockSize = 0;
@@ -128,7 +144,7 @@ void MyClient::getListOfUsers()
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    bool mode=true;
+    int mode=1;
     out << quint16(0) <<mode<<name;// true- значит запрос списка контактов
 
     out.device()->seek(0);
@@ -138,18 +154,18 @@ void MyClient::getListOfUsers()
 
 }
 void MyClient::slotConnected()
-{
+{m_ptxtInfo->clear();
     m_ptxtInfo->append("Подключение к серверу прошло успешно");
 }
-bool MyClient::slotRecieveData(QList<QString> list)
+void MyClient::slotRecieveData(QList<QString> list)
 {
     //проверка на доступность и отправка обратно
 
    // emit getListOfUsers();
     name=list[2];
     m_pTcpSocket->connectToHost(list[0], list[1].toInt());
-   sendNameToServer();
 
-this->show();
-    return true;
+   sendNameToServer();
+//this->show();
+
 }

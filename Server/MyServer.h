@@ -27,11 +27,13 @@ private:
     void sendToClient(QTcpSocket* pSocket, const QString& str);
 void sendToClient(QList<User> list, const QString& str);
 void sendToClient(User user, QList<User> list);
+void sendToClient(QTcpSocket* pSocket, bool mode);
 QTcpSocket* findSocket(QString str);
 User findUser( QTcpSocket* socket);
 public slots:
     virtual void slotNewConnection();
             void slotReadClient   ();
+            void handleDisconnect();
 };
 
 

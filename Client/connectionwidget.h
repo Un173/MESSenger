@@ -16,10 +16,10 @@ private:
     QLineEdit *portLineEdit= new QLineEdit("2323");
     QLineEdit *nameLineEdit= new QLineEdit("Алиса");
 signals:
- bool SendDataToMainWindow(QList<QString>);
+ void SendDataToMainWindow(QList<QString>);
 public slots:
       void OKButtonClicked();
-
+      void dataReturned(int);
 };
 
 #endif // CONNECTIONWIDGET_H

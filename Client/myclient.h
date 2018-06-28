@@ -23,11 +23,13 @@ private:
     QString     name;
     QList<QString> userList;
     QListWidget *listWidget;
-
+    QList<QString> users;
+    bool allowed=false;
 public:
     MyClient(QWidget* pwgt = 0);
     void sendNameToServer();
 signals:
+    void sendAllowanceResult(int);
 private:
       void getListOfUsers();
 
@@ -36,7 +38,7 @@ private slots:
     void slotError       (QAbstractSocket::SocketError);
     void slotSendToServer(                            );
     void slotConnected   (                            );
-    bool slotRecieveData(QList<QString>);
+    void slotRecieveData(QList<QString>);
 
 
 };
