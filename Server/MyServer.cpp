@@ -91,7 +91,7 @@ void MyServer::slotReadClient()
          int   mode;
         QTime   time;
         QString str;
-        QString name;
+        QString sender;
         in>>mode;
 
 
@@ -99,9 +99,9 @@ void MyServer::slotReadClient()
         {
         case 1://Подключился пользователь
         {
-            in>>name;
+            in>>sender;
              for (User &user: users)
-                 if(user.name==name)
+                 if(user.name==sender)
                  {
                      sendToClient(pClientSocket, false);
                      m_nNextBlockSize = 0;
@@ -109,7 +109,7 @@ void MyServer::slotReadClient()
                  }
                  sendToClient(pClientSocket, true);
             for (User &user: users) {
-                if(user.socket==pClientSocket)  user.name=name;
+                if(user.socket==pClientSocket)  user.name=sender;
 
             }
             m_ptxt->clear();
@@ -121,17 +121,18 @@ void MyServer::slotReadClient()
             break;
         }
         case 0:// Обычное сообщение
-        {
-            in >> time >>name>> str;
+        {QString reciever;
+            in >> time >>reciever>>sender>>str;
             QString strMessage =
-                time.toString() + " " + name+" has sended - " + str;
+                time.toString() + " " + sender+" has sended - " + str;
             m_ptxt->append(strMessage);
 
             /*sendToClient(pClientSocket,
                          "Server Response: Received \"" + str + "\""
                         );*/
-            sendToClient(users,
-                         name+": "+ str
+            User u=findUserByName(reciever);
+            history.addToHistory(time,sender,reciever,str);
+            sendToClient(u,sender,str
                         );
             break;
         }
@@ -152,6 +153,18 @@ void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
     out << quint16(arrBlock.size() - sizeof(quint16));
 
     pSocket->write(arrBlock);
+}
+void MyServer::sendToClient(User user,const QString&sender, const QString& str)
+{
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0) <<0<< QTime::currentTime() <<sender<< str;
+
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    user.socket->write(arrBlock);
 }
 void MyServer::sendToClient(QList<User> list, const QString& str)
 {
@@ -201,4 +214,27 @@ void MyServer::sendToClient(QTcpSocket* pSocket, bool mode)
 
    pSocket->write(arrBlock);
 
+}
+User MyServer::findUserByName(QString name)
+{
+    foreach (User user, users) {
+        if(user.name==name) return user;
+    }
+
+}
+void History::addToHistory(QTime time, QString sender, QString reciever, QString str)
+{ Message m;
+    m.time=time;
+    m.sender=sender;
+    m.reciever=reciever;
+    m.text=str;
+    list<<m;
+}
+QList<Message> History::getMessages(QString user1,QString user2)
+{
+    QList<Message> result;
+    foreach (Message m, list) {
+        if((m.sender==user1&&m.reciever==user2)||(m.sender==user2&&m.reciever==user1)) result<<m;
+    }
+    return result;
 }

@@ -17,7 +17,7 @@ MyClient::MyClient(
 
     m_ptxtInfo  = new QTextEdit;
     m_ptxtInput = new QLineEdit;
-
+m_ptxtInput->setReadOnly(true);
     connect(m_ptxtInput, SIGNAL(returnPressed()),
             this,        SLOT(slotSendToServer())
            );
@@ -37,6 +37,15 @@ MyClient::MyClient(
     pvbxLayout->addWidget(m_ptxtInput);
     pvbxLayout->addWidget(pcmd);
     setLayout(pvbxLayout);
+
+    connect(listWidget, SIGNAL(itemClicked(QListWidgetItem*)),
+               this, SLOT(onListItemClick(QListWidgetItem*)));
+}
+void MyClient::onListItemClick(QListWidgetItem *item)
+{
+reciever=item->text();
+//getHistory(reciever);
+m_ptxtInput->setReadOnly(false);
 }
 void MyClient::slotReadyRead()
 {
@@ -61,9 +70,11 @@ void MyClient::slotReadyRead()
         {
             QTime   time;
             QString str;
-            in >> time >> str;
+            QString sender;
+            in >> time >>sender>> str;
 
-            m_ptxtInfo->append(time.toString() + " " + str);
+            m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
+            m_ptxtInfo->setAlignment(Qt::AlignLeft);
 
             break;
         }
@@ -118,8 +129,11 @@ void MyClient::slotSendToServer()// обычное сообщение
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) <<0<< QTime::currentTime()<<name << m_ptxtInput->text();
-
+    out << quint16(0) <<0<< QTime::currentTime()<<reciever<<name<< m_ptxtInput->text();
+    //
+    m_ptxtInfo->append(m_ptxtInput->text());
+    m_ptxtInfo->setAlignment(Qt::AlignRight);
+    //
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
 
@@ -144,8 +158,24 @@ void MyClient::getListOfUsers()
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    int mode=1;
-    out << quint16(0) <<mode<<name;// true- значит запрос списка контактов
+
+    out << quint16(0) <<1<<name;// 1- запрос списка контактов
+
+
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    m_pTcpSocket->write(arrBlock);
+
+}
+void MyClient::getHistory(QString user)
+{
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+
+    out << quint16(0) <<2<<user<<name;// 2- запрос истории
+
 
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
@@ -159,9 +189,7 @@ void MyClient::slotConnected()
 }
 void MyClient::slotRecieveData(QList<QString> list)
 {
-    //проверка на доступность и отправка обратно
 
-   // emit getListOfUsers();
     name=list[2];
     m_pTcpSocket->connectToHost(list[0], list[1].toInt());
 

@@ -1,7 +1,7 @@
 
 
 #include <QWidget>
-
+#include <QTime>
 #include <QTcpServer.h>
 #include <QTextEdit.h>
 #include <QTcpSocket.h>
@@ -12,6 +12,20 @@ public:
     QString name;
     QTcpSocket* socket;
 
+};
+struct Message
+{
+    QTime time;
+    QString sender;
+    QString reciever;
+    QString text;
+};
+class History
+{private:
+    QList<Message> list;
+public:
+    void addToHistory(QTime time, QString sender, QString reciever, QString str);
+    QList<Message> getMessages(QString user1,QString user2);
 };
 class MyServer : public QWidget {
 Q_OBJECT
@@ -24,12 +38,13 @@ public:
 
 
 private:
+    History history;
     void sendToClient(QTcpSocket* pSocket, const QString& str);
 void sendToClient(QList<User> list, const QString& str);
 void sendToClient(User user, QList<User> list);
 void sendToClient(QTcpSocket* pSocket, bool mode);
-QTcpSocket* findSocket(QString str);
-User findUser( QTcpSocket* socket);
+void sendToClient(User user,const QString&sender, const QString& str);
+User findUserByName(QString name);
 public slots:
     virtual void slotNewConnection();
             void slotReadClient   ();

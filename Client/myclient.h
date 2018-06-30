@@ -24,6 +24,7 @@ private:
     QList<QString> userList;
     QListWidget *listWidget;
     QList<QString> users;
+    QString reciever;
     bool allowed=false;
 public:
     MyClient(QWidget* pwgt = 0);
@@ -32,14 +33,16 @@ signals:
     void sendAllowanceResult(int);
 private:
       void getListOfUsers();
-
+void getHistory(QString user);
 private slots:
     void slotReadyRead   (                            );
     void slotError       (QAbstractSocket::SocketError);
     void slotSendToServer(                            );
     void slotConnected   (                            );
     void slotRecieveData(QList<QString>);
+    void onListItemClick(QListWidgetItem*);
 
 
 };
+
 #endif  //_MyClient_h_
