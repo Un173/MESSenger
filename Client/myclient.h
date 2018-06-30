@@ -21,6 +21,7 @@ private:
     QLineEdit*  m_ptxtInput;
     quint16     m_nNextBlockSize;
     QString     name;
+    QLabel *nameLabel;
     QList<QString> userList;
     QListWidget *listWidget;
     QList<QString> users;

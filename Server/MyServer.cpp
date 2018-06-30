@@ -97,6 +97,16 @@ void MyServer::slotReadClient()
 
         switch (mode)
         {
+        case 2:// Запрос на историю
+        {
+            QString reciever;
+            in>>sender;
+            in>>reciever;
+            User u=findUserBySocket(pClientSocket);
+            QList<Message> messages=history.getMessages(sender,reciever);
+            sendToClient(u,messages);
+            break;
+        }
         case 1://Подключился пользователь
         {
             in>>sender;
@@ -166,21 +176,7 @@ void MyServer::sendToClient(User user,const QString&sender, const QString& str)
 
     user.socket->write(arrBlock);
 }
-void MyServer::sendToClient(QList<User> list, const QString& str)
-{
-    foreach(User user, list)
-    {
-    QByteArray  arrBlock;
-    QDataStream out(&arrBlock, QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) << QTime::currentTime() << str;
 
-    out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
-
-    user.socket->write(arrBlock);
-    }
-}
 void MyServer::sendToClient(User user, QList<User> list)
 {
     if(list.length()==0) return;
@@ -198,6 +194,26 @@ QList<QString> names;
     out.device()->seek(0);
     out << quint16(arrBlock.size() - sizeof(quint16));
 
+    user.socket->write(arrBlock);
+
+}
+void MyServer::sendToClient(User user, QList<Message> list)
+{
+    if(list.length()==0) return;
+
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0)<<1;//режим отправки истории
+   QList<QList<QString>> result;
+   foreach (Message m, list) {
+       QList<QString> l;
+       l<<m.time.toString()<<m.sender<<m.reciever<<m.text;
+       result<<l;
+   }
+    out<<result;
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
     user.socket->write(arrBlock);
 
 }
@@ -219,6 +235,13 @@ User MyServer::findUserByName(QString name)
 {
     foreach (User user, users) {
         if(user.name==name) return user;
+    }
+
+}
+User MyServer::findUserBySocket(QTcpSocket *socket)
+{
+    foreach (User user, users) {
+        if(user.socket==socket) return user;
     }
 
 }

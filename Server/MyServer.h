@@ -44,7 +44,9 @@ void sendToClient(QList<User> list, const QString& str);
 void sendToClient(User user, QList<User> list);
 void sendToClient(QTcpSocket* pSocket, bool mode);
 void sendToClient(User user,const QString&sender, const QString& str);
+void sendToClient(User user, QList<Message> list);
 User findUserByName(QString name);
+User findUserBySocket(QTcpSocket* socket);
 public slots:
     virtual void slotNewConnection();
             void slotReadClient   ();

@@ -17,6 +17,7 @@ MyClient::MyClient(
 
     m_ptxtInfo  = new QTextEdit;
     m_ptxtInput = new QLineEdit;
+    nameLabel=new QLabel("Client");
 m_ptxtInput->setReadOnly(true);
     connect(m_ptxtInput, SIGNAL(returnPressed()),
             this,        SLOT(slotSendToServer())
@@ -30,8 +31,9 @@ m_ptxtInput->setReadOnly(true);
     /*new QListWidgetItem(tr("Oak"), listWidget);
         new QListWidgetItem(tr("Fir"), listWidget);
         new QListWidgetItem(tr("Pine"), listWidget);*/
+
     QVBoxLayout* pvbxLayout = new QVBoxLayout;
-    pvbxLayout->addWidget(new QLabel("<H1>Client</H1>"));
+    pvbxLayout->addWidget(nameLabel);
     pvbxLayout->addWidget(listWidget);
     pvbxLayout->addWidget(m_ptxtInfo);
     pvbxLayout->addWidget(m_ptxtInput);
@@ -44,7 +46,7 @@ m_ptxtInput->setReadOnly(true);
 void MyClient::onListItemClick(QListWidgetItem *item)
 {
 reciever=item->text();
-//getHistory(reciever);
+getHistory(reciever);
 m_ptxtInput->setReadOnly(false);
 }
 void MyClient::slotReadyRead()
@@ -66,6 +68,8 @@ void MyClient::slotReadyRead()
         in>>mode;
         switch(mode)
         {
+        default:
+        {break;}
         case 0://Получение сообщения
         {
             QTime   time;
@@ -73,10 +77,21 @@ void MyClient::slotReadyRead()
             QString sender;
             in >> time >>sender>> str;
 
-            m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
-            m_ptxtInfo->setAlignment(Qt::AlignLeft);
-
+           /* m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
+            m_ptxtInfo->setAlignment(Qt::AlignLeft);*/
             break;
+        }
+        case 1:
+        {
+
+        QList<QList<QString>> messages;
+        in>>messages;
+        foreach (QList<QString> l, messages) {
+           //   l<<m.time.toString()<<m.sender<<m.reciever<<m.text;
+             m_ptxtInfo->append(l[0] + " " +l[1]+": "+ l[3]);
+        }
+
+        break;
         }
         case 2://Получение контактов
         {
@@ -106,6 +121,7 @@ void MyClient::slotReadyRead()
 
                 emit sendAllowanceResult(1);
             m_pTcpSocket->disconnectFromHost();
+            break;
         }
         }
         m_nNextBlockSize = 0;
@@ -194,6 +210,7 @@ void MyClient::slotRecieveData(QList<QString> list)
     m_pTcpSocket->connectToHost(list[0], list[1].toInt());
 
    sendNameToServer();
+   nameLabel->setText("<H1>"+name+"<\/H1>");
 //this->show();
 
 }
