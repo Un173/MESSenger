@@ -3,7 +3,9 @@
 
 #include <QWidget>
 #include <QTcpSocket>
-
+#include <QMenu>
+#include <QMenuBar>
+#include <QAction>
 #include<QTextEdit>
 #include<QLineEdit>
 #include<QPushButton>
@@ -27,6 +29,7 @@ private:
     QList<QString> users;
     QString reciever;
     bool allowed=false;
+
 public:
     MyClient(QWidget* pwgt = 0);
     void sendNameToServer();

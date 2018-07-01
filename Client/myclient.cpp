@@ -31,20 +31,38 @@ m_ptxtInput->setReadOnly(true);
     /*new QListWidgetItem(tr("Oak"), listWidget);
         new QListWidgetItem(tr("Fir"), listWidget);
         new QListWidgetItem(tr("Pine"), listWidget);*/
+QMenuBar *menuBar=new QMenuBar(this);
 
-    QVBoxLayout* pvbxLayout = new QVBoxLayout;
-    pvbxLayout->addWidget(nameLabel);
-    pvbxLayout->addWidget(listWidget);
-    pvbxLayout->addWidget(m_ptxtInfo);
-    pvbxLayout->addWidget(m_ptxtInput);
-    pvbxLayout->addWidget(pcmd);
-    setLayout(pvbxLayout);
+ QAction *msgAction = new QAction("Смена пользователя",menuBar);
+   menuBar->addAction(msgAction);
+   menuBar->setFixedHeight(50);
+menuBar->show();
+   QVBoxLayout* vLayout1 = new QVBoxLayout;
+
+   vLayout1->addWidget(nameLabel);
+   vLayout1->addWidget(listWidget);
+   QVBoxLayout* vLayout2 = new QVBoxLayout;
+   vLayout2->addWidget(m_ptxtInfo);
+   vLayout2->addWidget(m_ptxtInput);
+   vLayout2->addWidget(pcmd);
+
+    QHBoxLayout* hLayout = new QHBoxLayout;
+
+ hLayout->addLayout(vLayout1);
+ hLayout->addLayout(vLayout2);
+
+
+
+
+    setLayout(hLayout);
+
 
     connect(listWidget, SIGNAL(itemClicked(QListWidgetItem*)),
                this, SLOT(onListItemClick(QListWidgetItem*)));
 }
 void MyClient::onListItemClick(QListWidgetItem *item)
 {
+m_ptxtInfo->clear();
 reciever=item->text();
 getHistory(reciever);
 m_ptxtInput->setReadOnly(false);
@@ -76,19 +94,31 @@ void MyClient::slotReadyRead()
             QString str;
             QString sender;
             in >> time >>sender>> str;
-
-           /* m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
-            m_ptxtInfo->setAlignment(Qt::AlignLeft);*/
+if(sender==reciever)
+{
+            m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
+            m_ptxtInfo->setAlignment(Qt::AlignLeft);
+}
             break;
         }
         case 1:
         {
 
-        QList<QList<QString>> messages;
+        QList<QList<QString>> messages;//Получение истории
         in>>messages;
         foreach (QList<QString> l, messages) {
            //   l<<m.time.toString()<<m.sender<<m.reciever<<m.text;
-             m_ptxtInfo->append(l[0] + " " +l[1]+": "+ l[3]);
+
+             if(reciever==l[1])
+             {
+                  m_ptxtInfo->append(l[0] + " " +l[1]+": "+ l[3]);
+                  m_ptxtInfo->setAlignment(Qt::AlignLeft);
+             }
+             else
+             {
+                 m_ptxtInfo->append(l[3]);
+                 m_ptxtInfo->setAlignment(Qt::AlignRight);
+             }
         }
 
         break;
