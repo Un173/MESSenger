@@ -16,7 +16,10 @@ pvbxLayout->addWidget(btnOK);
 setLayout(pvbxLayout);
  connect(btnOK, SIGNAL(clicked()), this, SLOT(OKButtonClicked()));
 }
-
+void ConnectionWidget::slotForOpening()
+{
+    this->show();
+}
 void ConnectionWidget::OKButtonClicked()
 {
     QList<QString> list;

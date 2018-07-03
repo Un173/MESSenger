@@ -17,14 +17,14 @@ MyClient::MyClient(
 
     m_ptxtInfo  = new QTextEdit;
     m_ptxtInput = new QLineEdit;
-    nameLabel=new QLabel("Client");
+    nameLabel=new QLabel("<H2>Список контактов:<\/H2>");
 m_ptxtInput->setReadOnly(true);
     connect(m_ptxtInput, SIGNAL(returnPressed()),
             this,        SLOT(slotSendToServer())
            );
     m_ptxtInfo->setReadOnly(true);
 
-    QPushButton* pcmd = new QPushButton("&Send");
+    QPushButton* pcmd = new QPushButton("Отправить");
     connect(pcmd, SIGNAL(clicked()), SLOT(slotSendToServer()));
 
      listWidget = new QListWidget(this);
@@ -33,23 +33,28 @@ m_ptxtInput->setReadOnly(true);
         new QListWidgetItem(tr("Pine"), listWidget);*/
 QMenuBar *menuBar=new QMenuBar(this);
 
- QAction *msgAction = new QAction("Смена пользователя",menuBar);
-   menuBar->addAction(msgAction);
-   menuBar->setFixedHeight(50);
-menuBar->show();
+
+   menuBar->addAction("Смена пользователя", this, SLOT(slotChangeUser()) );
+//menuBar->show();
    QVBoxLayout* vLayout1 = new QVBoxLayout;
 
    vLayout1->addWidget(nameLabel);
    vLayout1->addWidget(listWidget);
    QVBoxLayout* vLayout2 = new QVBoxLayout;
+   vLayout2->addWidget(new QLabel("<H2>Сообщения:<\/H2>"));
    vLayout2->addWidget(m_ptxtInfo);
    vLayout2->addWidget(m_ptxtInput);
    vLayout2->addWidget(pcmd);
 
+   QFrame *line = new QFrame(this);
+   line->setFrameShape(QFrame::VLine); // Horizontal line
+   line->setFrameShadow(QFrame::Sunken);
+   line->setLineWidth(1);
     QHBoxLayout* hLayout = new QHBoxLayout;
-
- hLayout->addLayout(vLayout1);
- hLayout->addLayout(vLayout2);
+   hLayout->setMenuBar(menuBar);
+ hLayout->addLayout(vLayout1,1);
+  hLayout->addWidget(line);
+ hLayout->addLayout(vLayout2,4);
 
 
 
@@ -59,6 +64,12 @@ menuBar->show();
 
     connect(listWidget, SIGNAL(itemClicked(QListWidgetItem*)),
                this, SLOT(onListItemClick(QListWidgetItem*)));
+}
+void MyClient::slotChangeUser()
+{
+    m_pTcpSocket->disconnectFromHost();
+    this->close();
+    emit reopenConnectionWidget();
 }
 void MyClient::onListItemClick(QListWidgetItem *item)
 {
@@ -98,6 +109,10 @@ if(sender==reciever)
 {
             m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
             m_ptxtInfo->setAlignment(Qt::AlignLeft);
+}
+else
+{
+
 }
             break;
         }
@@ -160,12 +175,12 @@ if(sender==reciever)
 void MyClient::slotError(QAbstractSocket::SocketError err)
 {
     QString strError =
-        "Error: " + (err == QAbstractSocket::HostNotFoundError ?
-                     "The host was not found." :
+        "Ошибка: " + (err == QAbstractSocket::HostNotFoundError ?
+                     "Хост не был найден." :
                      err == QAbstractSocket::RemoteHostClosedError ?
-                     "The remote host is closed." :
+                     "Сервер закрыл соединение." :
                      err == QAbstractSocket::ConnectionRefusedError ?
-                     "The connection was refused." :
+                     "Сервер отказал в соединении." :
                      QString(m_pTcpSocket->errorString())
                     );
     m_ptxtInfo->append(strError);
@@ -240,7 +255,9 @@ void MyClient::slotRecieveData(QList<QString> list)
     m_pTcpSocket->connectToHost(list[0], list[1].toInt());
 
    sendNameToServer();
-   nameLabel->setText("<H1>"+name+"<\/H1>");
+   //nameLabel->setText("<H1>"+name+"<\/H1>");
+   setWindowTitle("MESSenger - "+name);
+
 //this->show();
 
 }

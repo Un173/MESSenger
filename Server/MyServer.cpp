@@ -9,8 +9,8 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
     m_ptcpServer = new QTcpServer(this);
     if (!m_ptcpServer->listen(QHostAddress::Any, nPort)) {
         QMessageBox::critical(0,
-                              "Server Error",
-                              "Unable to start the server:"
+                              "Ошибка сервера",
+                              "Невозможно создть сервер:"
                               + m_ptcpServer->errorString()
                              );
         m_ptcpServer->close();
@@ -44,7 +44,7 @@ void MyServer::slotNewConnection()
             this,          SLOT(slotReadClient())
            );
 
-    //sendToClient(pClientSocket, "Server Response: Connected!");
+
 
    User user;
    user.socket=pClientSocket;
@@ -134,7 +134,7 @@ void MyServer::slotReadClient()
         {QString reciever;
             in >> time >>reciever>>sender>>str;
             QString strMessage =
-                time.toString() + " " + sender+" has sended - " + str;
+                time.toString() + " " + sender+" отправил - " + str;
             m_ptxt->append(strMessage);
 
             /*sendToClient(pClientSocket,

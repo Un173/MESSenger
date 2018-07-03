@@ -9,7 +9,7 @@ class ConnectionWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit ConnectionWidget(QWidget *parent = nullptr);
+     ConnectionWidget(QWidget *parent = nullptr);
 private:
 
     QLineEdit *addressLineEdit= new QLineEdit("localhost");
@@ -20,6 +20,7 @@ signals:
 public slots:
       void OKButtonClicked();
       void dataReturned(int);
+      void slotForOpening();
 };
 
 #endif // CONNECTIONWIDGET_H

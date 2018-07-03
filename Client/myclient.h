@@ -14,7 +14,7 @@
 #include <QLabel>
 #include <QTime>
 #include <QListWidget>
-
+#include <QPair>
 class MyClient : public QWidget {
 Q_OBJECT
 private:
@@ -35,6 +35,7 @@ public:
     void sendNameToServer();
 signals:
     void sendAllowanceResult(int);
+    void reopenConnectionWidget();
 private:
       void getListOfUsers();
 void getHistory(QString user);
@@ -45,7 +46,7 @@ private slots:
     void slotConnected   (                            );
     void slotRecieveData(QList<QString>);
     void onListItemClick(QListWidgetItem*);
-
+    void slotChangeUser();
 
 };
 
