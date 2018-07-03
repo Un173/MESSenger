@@ -74,6 +74,14 @@ void MyClient::slotChangeUser()
 void MyClient::onListItemClick(QListWidgetItem *item)
 {
 m_ptxtInfo->clear();
+QString str=item->text();
+int a=str.lastIndexOf("(");
+QString result=str.left(a);
+foreach (auto p, users) {
+    if(p.first==result) p.second=0;
+}
+
+item->setText(result);
 reciever=item->text();
 getHistory(reciever);
 m_ptxtInput->setReadOnly(false);
@@ -112,7 +120,26 @@ if(sender==reciever)
 }
 else
 {
+    for(int i=0;i<users.length();i++)
+    {
+        if(sender==users[i].first)
+        {
+           users[i].second++;
+           QString number= QString::number(users[i].second);
+            if(users[i].second==1)
+            {
 
+            listWidget->item(i)->setText(listWidget->item(i)->text()+"("+number+")");
+            }
+            else if(users[i].second>1)
+            {
+                QString str=listWidget->item(i)->text();
+                int a=str.lastIndexOf("(");
+                QString result=str.left(a);
+                listWidget->item(i)->setText(result+"("+number+")");
+            }
+        }
+    }
 }
             break;
         }
@@ -140,14 +167,16 @@ else
         }
         case 2://Получение контактов
         {
-
+QList<QString> list;
             users.clear();
-            in>>users;
+            in>>list;
 
             listWidget->clear();
-            foreach (QString str, users) {
+
+            foreach (QString str, list) {
 
                   new QListWidgetItem(str, listWidget);
+                users.append(qMakePair(str,0));
             }
 
             break;

@@ -26,7 +26,7 @@ private:
     QLabel *nameLabel;
     QList<QString> userList;
     QListWidget *listWidget;
-    QList<QString> users;
+    QList<QPair<QString,int>> users;
     QString reciever;
     bool allowed=false;
 
