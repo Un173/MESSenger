@@ -15,11 +15,15 @@
 #include <QTime>
 #include <QListWidget>
 #include <QPair>
+#include <QTextBrowser>
+#include <QFileDialog>
 class MyClient : public QWidget {
 Q_OBJECT
 private:
+    QPushButton* fileTransferButton;
+    QPushButton* pcmd;
     QTcpSocket* m_pTcpSocket;
-    QTextEdit*  m_ptxtInfo;
+    QTextBrowser*  m_ptxtInfo;
     QLineEdit*  m_ptxtInput;
     quint16     m_nNextBlockSize;
     QString     name;
@@ -40,6 +44,8 @@ private:
       void getListOfUsers();
 void getHistory(QString user);
 private slots:
+
+    void onAnchorClicked(const QUrl &link);
     void slotReadyRead   (                            );
     void slotError       (QAbstractSocket::SocketError);
     void slotSendToServer(                            );
@@ -47,6 +53,7 @@ private slots:
     void slotRecieveData(QList<QString>);
     void onListItemClick(QListWidgetItem*);
     void slotChangeUser();
+    void addFile();
 
 };
 

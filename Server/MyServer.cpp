@@ -21,13 +21,19 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
            );
 
 
-    m_ptxt = new QTextEdit;
-    m_ptxt->setReadOnly(true);
+    usersTextEdit = new QTextEdit;
+    usersTextEdit->setReadOnly(true);
+    chatLogTextEdit=new QTextEdit;
+     chatLogTextEdit->setReadOnly(true);
 
-    //Layout setup
+
     QVBoxLayout* pvbxLayout = new QVBoxLayout;
     pvbxLayout->addWidget(new QLabel("<H1>Server</H1>"));
-    pvbxLayout->addWidget(m_ptxt);
+    pvbxLayout->addWidget(new QLabel("<H2>Пользователи в сети:</H2>"));
+    pvbxLayout->addWidget(usersTextEdit);
+    pvbxLayout->addWidget(new QLabel("<H2>Лог чата:</H2>"));
+    pvbxLayout->addWidget(chatLogTextEdit);
+
     setLayout(pvbxLayout);
 }
 void MyServer::slotNewConnection()
@@ -66,10 +72,12 @@ void MyServer::handleDisconnect()
          if(sender==users[i].socket) {users.removeAt(i);break;}
 
      }
-    for (User &user: users) {
-      sendToClient(user, users);
-}
+    usersTextEdit->clear();
+      for (User &user: users) {
 
+          usersTextEdit->append(user.name+",");
+        sendToClient(user, users);
+    }
 }
 void MyServer::slotReadClient()
 {
@@ -93,10 +101,32 @@ void MyServer::slotReadClient()
         QString str;
         QString sender;
         in>>mode;
-
-
         switch (mode)
         {
+        case 4://Запрос на загрузку файла
+        {
+            int id;
+        in>>id;
+            sendFileToClient(pClientSocket, id);
+            break;
+        }
+        case 3: //Загружен файл
+        {
+            //3<< QTime::currentTime()<<reciever<<name<<file->fileName()<<q;
+            QString reciever;
+            QString fileName;
+            in>>time>>sender>>reciever>>fileName;
+            QByteArray q = pClientSocket->readAll();
+             qDebug() <<q.size();
+            int id= history.addToHistory(time,sender,reciever,fileName.section("/",-1),q);
+            User user=findUserByName(reciever);
+        sendIdToClient(user, sender, fileName,id);
+
+        QString strMessage =
+            time.toString() + " " + sender+" отправил файл пользователю "+reciever+" :" + fileName.section("/",-1);
+        chatLogTextEdit->append(strMessage);
+            break;
+        }
         case 2:// Запрос на историю
         {
             QString reciever;
@@ -122,10 +152,10 @@ void MyServer::slotReadClient()
                 if(user.socket==pClientSocket)  user.name=sender;
 
             }
-            m_ptxt->clear();
+            usersTextEdit->clear();
               for (User &user: users) {
 
-                  m_ptxt->append(user.name+",");
+                  usersTextEdit->append(user.name+",");
                 sendToClient(user, users);
             }
             break;
@@ -134,8 +164,8 @@ void MyServer::slotReadClient()
         {QString reciever;
             in >> time >>reciever>>sender>>str;
             QString strMessage =
-                time.toString() + " " + sender+" отправил - " + str;
-            m_ptxt->append(strMessage);
+                time.toString() + " " + sender+" отправил пользователю "+reciever+" :" + str;
+            chatLogTextEdit->append(strMessage);
 
             /*sendToClient(pClientSocket,
                          "Server Response: Received \"" + str + "\""
@@ -151,6 +181,28 @@ void MyServer::slotReadClient()
 
          m_nNextBlockSize = 0;
     }
+}
+void MyServer::sendIdToClient(User user, QString sender, QString fileName, int id)
+{
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0) <<3<< QTime::currentTime() <<sender<<fileName<< id;
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+
+    user.socket->write(arrBlock);
+}
+void MyServer::sendFileToClient(QTcpSocket* pClientSocket, int id)
+{Message m=history.findMessageById(id);
+    QByteArray  arrBlock;
+    QDataStream out(&arrBlock, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_4_2);
+    out << quint16(0)<<4<<m.fileName;
+    arrBlock.append(m.file);
+    out.device()->seek(0);
+    out << quint16(arrBlock.size() - sizeof(quint16));
+    pClientSocket->write(arrBlock);
 }
 void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
 {
@@ -176,7 +228,6 @@ void MyServer::sendToClient(User user,const QString&sender, const QString& str)
 
     user.socket->write(arrBlock);
 }
-
 void MyServer::sendToClient(User user, QList<User> list)
 {
     if(list.length()==0) return;
@@ -208,7 +259,7 @@ void MyServer::sendToClient(User user, QList<Message> list)
    QList<QList<QString>> result;
    foreach (Message m, list) {
        QList<QString> l;
-       l<<m.time.toString()<<m.sender<<m.reciever<<m.text;
+       l<<QString::number(m.id)<<m.time.toString()<<m.sender<<m.reciever<<m.text<<m.fileName;
        result<<l;
    }
     out<<result;
@@ -245,13 +296,67 @@ User MyServer::findUserBySocket(QTcpSocket *socket)
     }
 
 }
+int History::addToHistory(QTime time, QString sender, QString reciever,QString fileName, QByteArray file)
+ {
+     int count=0;
+     foreach (auto a, list)
+     {
+         if((a.sender==sender&&a.reciever==reciever)||(a.sender==reciever&&a.reciever==sender))
+             count++;
+     }
+     if(count>maxNumberOfMessages)
+     {
+         for(int i=0;i<list.length();i++)
+         {
+             if((list[i].sender==sender&&list[i].reciever==reciever)||(list[i].sender==reciever&&list[i].reciever==sender))
+             {
+                 count--;
+                 list.removeAt(i);
+             }
+             if(count<=maxNumberOfMessages) break;
+         }
+     }
+     Message m;
+     m.id=currentId;
+     m.time=time;
+     m.sender=sender;
+     m.reciever=reciever;
+     m.text="";
+     m.file=file;
+     m.fileName=fileName;
+     list<<m;
+     currentId++;
+     return m.id;
+ }
 void History::addToHistory(QTime time, QString sender, QString reciever, QString str)
-{ Message m;
+{
+    int count=0;
+    foreach (auto a, list)
+    {
+        if((a.sender==sender&&a.reciever==reciever)||(a.sender==reciever&&a.reciever==sender))
+            count++;
+    }
+    if(count>maxNumberOfMessages)
+    {
+        for(int i=0;i<list.length();i++)
+        {
+            if((list[i].sender==sender&&list[i].reciever==reciever)||(list[i].sender==reciever&&list[i].reciever==sender))
+            {
+                count--;
+                list.removeAt(i);
+            }
+            if(count<=maxNumberOfMessages) break;
+        }
+    }
+    Message m;
+    m.id=currentId;
     m.time=time;
     m.sender=sender;
     m.reciever=reciever;
     m.text=str;
+    m.fileName="";
     list<<m;
+    currentId++;
 }
 QList<Message> History::getMessages(QString user1,QString user2)
 {
@@ -260,4 +365,10 @@ QList<Message> History::getMessages(QString user1,QString user2)
         if((m.sender==user1&&m.reciever==user2)||(m.sender==user2&&m.reciever==user1)) result<<m;
     }
     return result;
+}
+Message History::findMessageById(int id)
+{
+    foreach (Message m, list) {
+        if(m.id==id) return m;
+    }
 }
