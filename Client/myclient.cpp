@@ -2,61 +2,54 @@
 
 MyClient::MyClient(
 
-                   QWidget*       pwgt /*=0*/
+                   QWidget*       pwgt
                   ) : QWidget(pwgt)
                     , m_nNextBlockSize(0)
 {
-    m_pTcpSocket = new QTcpSocket(this);
-
-
-    connect(m_pTcpSocket, SIGNAL(connected()), SLOT(slotConnected()));
-    connect(m_pTcpSocket, SIGNAL(readyRead()), SLOT(slotReadyRead()));
-    connect(m_pTcpSocket, SIGNAL(error(QAbstractSocket::SocketError)),
+    socket = new QTcpSocket(this);
+    connect(socket, SIGNAL(connected()), SLOT(slotConnected()));
+    connect(socket, SIGNAL(readyRead()), SLOT(slotReadyRead()));
+    connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),
             this,         SLOT(slotError(QAbstractSocket::SocketError))
            );
+    chatTextBrowser  = new QTextBrowser;
+    chatTextBrowser->setOpenLinks(false);
+    connect(chatTextBrowser, QTextBrowser::anchorClicked, this, onAnchorClicked);
 
-    m_ptxtInfo  = new QTextBrowser;
-    m_ptxtInfo->setOpenLinks(0);
-    //m_ptxtInfo->setOpenExternalLinks(0);
-  //  m_ptxtInfo->setSource(QtCore.QUrl());
-
-    connect(m_ptxtInfo, &QTextBrowser::anchorClicked, this, onAnchorClicked);
-    m_ptxtInput = new QLineEdit;
+    inputLineEdit = new QLineEdit;
     nameLabel=new QLabel("<H2>Список контактов:<\/H2>");
-m_ptxtInput->setReadOnly(true);
-    connect(m_ptxtInput, SIGNAL(returnPressed()),
-            this,        SLOT(slotSendToServer())
-           );
+    inputLineEdit->setReadOnly(true);
+    connect(inputLineEdit, SIGNAL(returnPressed()),this,SLOT(slotSendToServer()));
 
+    sendMessageButton = new QPushButton("Отправить");
+    connect(sendMessageButton, SIGNAL(clicked()), SLOT(slotSendToServer()));
 
-    pcmd = new QPushButton("Отправить");
-    connect(pcmd, SIGNAL(clicked()), SLOT(slotSendToServer()));
- // fileTransferButton = new QPushButton("Прикрепить файл");
     fileTransferButton = new QPushButton();
     fileTransferButton->setIcon(this->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     connect(fileTransferButton, SIGNAL(clicked()), SLOT(addFile()));
-fileTransferButton->setDisabled(1);
-pcmd->setDisabled(1);
-     listWidget = new QListWidget(this);
+
+    fileTransferButton->setDisabled(1);
+    sendMessageButton->setDisabled(1);
+    listWidget = new QListWidget(this);
 
 QMenuBar *menuBar=new QMenuBar(this);
 
-
    menuBar->addAction("Смена пользователя", this, SLOT(slotChangeUser()) );
-//menuBar->show();
-   QVBoxLayout* vLayout1 = new QVBoxLayout;
 
+   QVBoxLayout* vLayout1 = new QVBoxLayout;
    vLayout1->addWidget(nameLabel);
    vLayout1->addWidget(listWidget);
+
    QHBoxLayout* buttonHLayout = new QHBoxLayout;
-   buttonHLayout->addWidget(pcmd,10);
+   buttonHLayout->addWidget(sendMessageButton,10);
  buttonHLayout->addWidget(fileTransferButton,1);
 
    QVBoxLayout* vLayout2 = new QVBoxLayout;
    vLayout2->addWidget(new QLabel("<H2>Сообщения:<\/H2>"));
-   vLayout2->addWidget(m_ptxtInfo);
-   vLayout2->addWidget(m_ptxtInput);
-vLayout2->addLayout(buttonHLayout);
+   vLayout2->addWidget(chatTextBrowser);
+   vLayout2->addWidget(inputLineEdit);
+   vLayout2->addLayout(buttonHLayout);
+
    QFrame *line = new QFrame(this);
    line->setFrameShape(QFrame::VLine); // Horizontal line
    line->setFrameShadow(QFrame::Sunken);
@@ -64,18 +57,12 @@ vLayout2->addLayout(buttonHLayout);
 
     QHBoxLayout* hLayout = new QHBoxLayout;
    hLayout->setMenuBar(menuBar);
- hLayout->addLayout(vLayout1,1);
-  hLayout->addWidget(line);
- hLayout->addLayout(vLayout2,4);
+   hLayout->addLayout(vLayout1,1);
+   hLayout->addWidget(line);
+   hLayout->addLayout(vLayout2,4);
+   setLayout(hLayout);
 
-
-
-
-    setLayout(hLayout);
-
-
-    connect(listWidget, SIGNAL(itemClicked(QListWidgetItem*)),
-               this, SLOT(onListItemClick(QListWidgetItem*)));
+   connect(listWidget, SIGNAL(itemClicked(QListWidgetItem*)),this,SLOT(onListItemClick(QListWidgetItem*)));
 }
 void MyClient::addFile()
 { 
@@ -92,59 +79,59 @@ void MyClient::addFile()
   QDataStream out(&arrBlock, QIODevice::WriteOnly);
   out.setVersion(QDataStream::Qt_4_2);
   out << quint64(0) <<3<< QTime::currentTime()<<name<<reciever<<file->fileName()<<q.size();
-  //
 arrBlock.append(q);
  file->close();
-
-  m_ptxtInfo->append("<span>"+"Отправлен файл "+file->fileName().section("/",-1)+"</span>");
-  m_ptxtInfo->setAlignment(Qt::AlignRight);
-
-  //
+  chatTextBrowser->append("<span>Отправлен файл "+file->fileName().section("/",-1)+"</span>");
+setAllignment(1);
   out.device()->seek(0);
   out << quint64(arrBlock.size() - sizeof(quint64));
 
-  m_pTcpSocket->write(arrBlock);
+  socket->write(arrBlock);
 
   qDebug()<<arrBlock.size();
 }
 void MyClient::slotChangeUser()
 {
-    m_pTcpSocket->disconnectFromHost();
+    reciever="";
+    chatTextBrowser->clear();
+    fileTransferButton->setDisabled(1);
+    sendMessageButton->setDisabled(1);
+    inputLineEdit->setReadOnly(true);
+    socket->disconnectFromHost();
     this->close();
     emit reopenConnectionWidget();
 }
 void MyClient::onListItemClick(QListWidgetItem *item)
 {
-m_ptxtInfo->clear();
+chatTextBrowser->clear();
 QString str=item->text();
 int a=str.lastIndexOf("(");
 QString result=str.left(a);
  for(int i=0;i<users.length();i++)
  {
     if(users[i].first==result) users[i].second=0;
-}
-
+ }
 item->setText(result);
 reciever=item->text();
 getHistory(reciever);
-m_ptxtInput->setReadOnly(false);
-m_ptxtInput->setReadOnly(false);
+inputLineEdit->setReadOnly(false);
+inputLineEdit->setReadOnly(false);
 fileTransferButton->setDisabled(0);
-pcmd->setDisabled(0);
+sendMessageButton->setDisabled(0);
 }
 void MyClient::slotReadyRead()
 {
-    QDataStream in(m_pTcpSocket);
+    QDataStream in(socket);
     in.setVersion(QDataStream::Qt_4_2);
     for (;;) {
         if (!m_nNextBlockSize) {
-            if (m_pTcpSocket->bytesAvailable() < sizeof(quint64)) {
+            if (socket->bytesAvailable() < sizeof(quint64)) {
                 break;
             }
             in >> m_nNextBlockSize;
         }
 
-        if (m_pTcpSocket->bytesAvailable() < m_nNextBlockSize) {
+        if (socket->bytesAvailable() < m_nNextBlockSize) {
             break;
         }
         int mode;
@@ -161,8 +148,9 @@ void MyClient::slotReadyRead()
             in >> time >>sender>> str;
             if(sender==reciever)
             {
-                        m_ptxtInfo->append("<span>"+time.toString() + " " +sender+": "+ str+"</span>");
-                        m_ptxtInfo->setAlignment(Qt::AlignLeft);
+                        chatTextBrowser->append("<span>"+time.toString() + " " +sender+": "+ str+"</span>");
+
+                        setAllignment(0);
             }
 else
 {
@@ -191,12 +179,10 @@ else
         }
         case 1://Получение истории
         {
-
+        chatTextBrowser->clear();
         QList<QList<QString>> messages;
         in>>messages;
         foreach (QList<QString> l, messages) {
-           //   l<<QString::number(m.id)<<m.time.toString()<<m.sender<<m.reciever<<m.text<<m.fileName;
-
             QString id=l[0];
             QString time=l[1];
             QString sender=l[2];
@@ -207,26 +193,26 @@ else
             {
                  if(fileName=="")
                  {
-                  m_ptxtInfo->append("<span>"+time + " " +sender+": "+ text+"</span>");
-                  m_ptxtInfo->setAlignment(Qt::AlignLeft);
+                  chatTextBrowser->append("<span>"+time + " " +sender+": "+ text+"</span>");
+                  setAllignment(0);
                  }
                  else
                  {
-                     m_ptxtInfo->append(time + " " +sender+" отправил файл\""+"<a href = \""+id+"\" >"+ fileName.section("/",-1)+"</a>"+"\".");
-                     m_ptxtInfo->setAlignment(Qt::AlignLeft);
+                     chatTextBrowser->append("<span>"+time + " " +sender+" отправил файл\""+"<a href = \""+id+"\" >"+ fileName.section("/",-1)+"</a>"+"\".</span>");
+                     setAllignment(0);
                  }
              }
              else
              {
                 if(fileName=="")
                 {
-                 m_ptxtInfo->append(text);
-                 m_ptxtInfo->setAlignment(Qt::AlignRight);
+                 chatTextBrowser->append("<span>"+text+"</span>");
+                 setAllignment(1);
                 }
                 else
                 {
-                  m_ptxtInfo->append("Отправлен файл "+fileName.section("/",-1));
-                  m_ptxtInfo->setAlignment(Qt::AlignRight);
+                  chatTextBrowser->append("<span>Отправлен файл "+fileName.section("/",-1)+"</span>");
+                  setAllignment(1);
                 }
              }
         }
@@ -246,12 +232,22 @@ else
                   new QListWidgetItem(str, listWidget);
                 users.append(qMakePair(str,0));
             }
-
+            bool ka=0;
+            foreach (auto user, users) {
+                if(user.first==reciever) ka=1;
+            }
+          if(ka==0)
+          {
+              reciever="";
+              chatTextBrowser->clear();
+              fileTransferButton->setDisabled(1);
+              sendMessageButton->setDisabled(1);
+              inputLineEdit->setReadOnly(true);
+          }
             break;
         }
         case 3://Получение ссылки на файл
         {
-            //QTime::currentTime() <<sender<< id;
              QTime   time;
             QString sender;
             QString fileName;
@@ -259,8 +255,8 @@ else
             in>>time>>sender>>fileName>>id;
              if(sender==reciever)
              {
-                 m_ptxtInfo->append(time.toString() + " " +sender+" отправил файл\""+"<a href = \""+QString::number(id)+"\" >"+ fileName.section("/",-1)+"</a>"+"\".");
-                 m_ptxtInfo->setAlignment(Qt::AlignLeft);
+                 chatTextBrowser->append("<span>"+time.toString() + " " +sender+" отправил файл\""+"<a href = \""+QString::number(id)+"\" >"+ fileName.section("/",-1)+"</a>"+"\".</span>");
+                 setAllignment(0);
              }
              else
              {
@@ -290,20 +286,21 @@ else
         }
         case 4:// Получение файлов
         {
+
+            getHistory(reciever);
             QString fileName;
             int size;
             in>>fileName>>size;
-            QByteArray q = m_pTcpSocket->read(size);
-           // QByteArray q = m_pTcpSocket->readAll();
+            QByteArray q = socket->read(size);
             qDebug()<<q.size();
 
            QString filePath = QFileDialog::getSaveFileName(this, "Сохранить файл", fileName);
-            if(filePath=="") return;
+            if(filePath=="") break;
                QFile target(filePath);
 
                if (!target.open(QIODevice::WriteOnly)) {
                    qDebug() << "Невозможно открыть файл";
-                   return;
+                   break;
                }
                target.write(q);
 
@@ -325,7 +322,7 @@ else
             }
 
                 emit sendAllowanceResult(1);
-            m_pTcpSocket->disconnectFromHost();
+            socket->disconnectFromHost();
             break;
         }
         }
@@ -341,26 +338,23 @@ void MyClient::slotError(QAbstractSocket::SocketError err)
                      "Сервер закрыл соединение." :
                      err == QAbstractSocket::ConnectionRefusedError ?
                      "Сервер отказал в соединении." :
-                     QString(m_pTcpSocket->errorString())
+                     QString(socket->errorString())
                     );
-    m_ptxtInfo->append(strError);
+    chatTextBrowser->append("<span>"+strError+"</span>");
 }
 void MyClient::slotSendToServer()// обычное сообщение
-{if(m_ptxtInput->text()=="") return;
+{if(inputLineEdit->text()=="") return;
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint64(0) <<0<< QTime::currentTime()<<reciever<<name<< m_ptxtInput->text();
-    //
-    m_ptxtInfo->append(m_ptxtInput->text());
-    m_ptxtInfo->setAlignment(Qt::AlignRight);
-
-    //
+    out << quint64(0) <<0<< QTime::currentTime()<<reciever<<name<< inputLineEdit->text();
+    chatTextBrowser->append("<span>"+inputLineEdit->text()+"</span>");
+    setAllignment(1);
     out.device()->seek(0);
     out << quint64(arrBlock.size() - sizeof(quint64));
 
-    m_pTcpSocket->write(arrBlock);
-    m_ptxtInput->setText("");
+    socket->write(arrBlock);
+    inputLineEdit->setText("");
 }
 void MyClient::sendNameToServer()
 {
@@ -372,7 +366,7 @@ void MyClient::sendNameToServer()
     out.device()->seek(0);
     out << quint64(arrBlock.size() - sizeof(quint64));
 
-    m_pTcpSocket->write(arrBlock);
+    socket->write(arrBlock);
 
 }
 void MyClient::getListOfUsers()
@@ -383,11 +377,10 @@ void MyClient::getListOfUsers()
 
     out << quint64(0) <<1<<name;// 1- запрос списка контактов
 
-
     out.device()->seek(0);
     out << quint64(arrBlock.size() - sizeof(quint64));
 
-    m_pTcpSocket->write(arrBlock);
+    socket->write(arrBlock);
 
 }
 void MyClient::getHistory(QString user)
@@ -402,29 +395,25 @@ void MyClient::getHistory(QString user)
     out.device()->seek(0);
     out << quint64(arrBlock.size() - sizeof(quint64));
 
-    m_pTcpSocket->write(arrBlock);
+    socket->write(arrBlock);
 
 }
 void MyClient::slotConnected()
-{m_ptxtInfo->clear();
-    m_ptxtInfo->append("Подключение к серверу прошло успешно");
+{chatTextBrowser->clear();
+    chatTextBrowser->append("<span>Подключение к серверу прошло успешно</span>");
 }
 void MyClient::slotRecieveData(QList<QString> list)
 {
 
     name=list[2];
-    m_pTcpSocket->connectToHost(list[0], list[1].toInt());
+    socket->connectToHost(list[0], list[1].toInt());
 
    sendNameToServer();
-   //nameLabel->setText("<H1>"+name+"<\/H1>");
    setWindowTitle("MESSenger - "+name);
-
-//this->show();
 
 }
 void MyClient::onAnchorClicked(const QUrl &url)
 {
-
 QString str=url.toEncoded();
 str=str.section("/",-1);
 int id=str.toInt();
@@ -436,6 +425,21 @@ out << quint64(0)<<4<<id;
 out.device()->seek(0);
 out << quint64(arrBlock.size() - sizeof(quint64));
 
-m_pTcpSocket->write(arrBlock);
+socket->write(arrBlock);
 
+}
+void MyClient::setAllignment(bool allignment)
+{ QTextCursor cursor = chatTextBrowser->textCursor();
+    QTextBlockFormat textBlockFormat = cursor.blockFormat();
+    if(allignment==1)
+    {
+         textBlockFormat.setAlignment(Qt::AlignRight);
+    }
+   else
+    {
+        textBlockFormat.setAlignment(Qt::AlignLeft);
+    }
+
+    cursor.mergeBlockFormat(textBlockFormat);
+    chatTextBrowser->setTextCursor(cursor);
 }

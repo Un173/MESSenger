@@ -14,17 +14,17 @@ pvbxLayout->addWidget(new QLabel("<H2>Введите ваше имя:</H2>"));
 pvbxLayout->addWidget(nameLineEdit);
 pvbxLayout->addWidget(btnOK);
 setLayout(pvbxLayout);
- connect(btnOK, SIGNAL(clicked()), this, SLOT(OKButtonClicked()));
+ connect(btnOK, SIGNAL(clicked()), this, SLOT(okButtonClicked()));
 }
 void ConnectionWidget::slotForOpening()
 {
     this->show();
 }
-void ConnectionWidget::OKButtonClicked()
+void ConnectionWidget::okButtonClicked()
 {
     QList<QString> list;
     list<<addressLineEdit->text()<<portLineEdit->text()<<nameLineEdit->text();
-   emit SendDataToMainWindow(list);
+   emit sendDataToMainWindow(list);
     //this->close();
 }
 void ConnectionWidget::dataReturned(int result)

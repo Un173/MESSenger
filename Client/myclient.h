@@ -17,14 +17,15 @@
 #include <QPair>
 #include <QTextBrowser>
 #include <QFileDialog>
+#include <QtCore>
 class MyClient : public QWidget {
 Q_OBJECT
 private:
     QPushButton* fileTransferButton;
-    QPushButton* pcmd;
-    QTcpSocket* m_pTcpSocket;
-    QTextBrowser*  m_ptxtInfo;
-    QLineEdit*  m_ptxtInput;
+    QPushButton* sendMessageButton;
+    QTcpSocket* socket;
+    QTextBrowser*  chatTextBrowser;
+    QLineEdit*  inputLineEdit;
     quint64     m_nNextBlockSize;
     QString     name;
     QLabel *nameLabel;
@@ -36,15 +37,16 @@ private:
 
 public:
     MyClient(QWidget* pwgt = 0);
-    void sendNameToServer();
+
 signals:
     void sendAllowanceResult(int);
     void reopenConnectionWidget();
 private:
-      void getListOfUsers();
-void getHistory(QString user);
+     void sendNameToServer();
+     void getListOfUsers();
+     void getHistory(QString user);
+     void setAllignment(bool allignment);
 private slots:
-
     void onAnchorClicked(const QUrl &link);
     void slotReadyRead   (                            );
     void slotError       (QAbstractSocket::SocketError);

@@ -1,30 +1,23 @@
 #include "MyServer.h"
-#include <QMessageBox>
-#include <QLayout>
-#include <QLabel>
-#include <QTime>
-MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
+
+MyServer::MyServer(int nPort, QWidget* pwgt) : QWidget(pwgt)
                                                     , m_nNextBlockSize(0)
 {
-    m_ptcpServer = new QTcpServer(this);
-    if (!m_ptcpServer->listen(QHostAddress::Any, nPort)) {
+    server = new QTcpServer(this);
+    if (!server->listen(QHostAddress::Any, nPort)) {
         QMessageBox::critical(0,
                               "Ошибка сервера",
-                              "Невозможно создть сервер:"
-                              + m_ptcpServer->errorString()
+                              "Невозможно создать сервер:"
+                              + server->errorString()
                              );
-        m_ptcpServer->close();
+        server->close();
         return;
     }
-    connect(m_ptcpServer, SIGNAL(newConnection()),
-            this,         SLOT(slotNewConnection())
-           );
-
-
+    connect(server, SIGNAL(newConnection()),this,SLOT(slotNewConnection()));
     usersTextEdit = new QTextEdit;
     usersTextEdit->setReadOnly(true);
     chatLogTextEdit=new QTextEdit;
-     chatLogTextEdit->setReadOnly(true);
+    chatLogTextEdit->setReadOnly(true);
 
 
     QVBoxLayout* pvbxLayout = new QVBoxLayout;
@@ -38,30 +31,14 @@ MyServer::MyServer(int nPort, QWidget* pwgt /*=0*/) : QWidget(pwgt)
 }
 void MyServer::slotNewConnection()
 {
-    QTcpSocket* pClientSocket = m_ptcpServer->nextPendingConnection();
-
-
-    connect(pClientSocket, SIGNAL(disconnected()),
-            pClientSocket, SLOT(deleteLater())
-           );
-
-
-    connect(pClientSocket, SIGNAL(readyRead()),
-            this,          SLOT(slotReadClient())
-           );
-
-
-
+    QTcpSocket* pClientSocket = server->nextPendingConnection();
+    connect(pClientSocket, SIGNAL(disconnected()),pClientSocket, SLOT(deleteLater()));
+    connect(pClientSocket, SIGNAL(readyRead()),this,SLOT(slotReadClient()));
    User user;
    user.socket=pClientSocket;
-
-   connect(pClientSocket, SIGNAL(disconnected()),
-           this, SLOT(handleDisconnect())
-          );
-
- users<<user;
-  sendToClient(user, users);
-
+   connect(pClientSocket, SIGNAL(disconnected()),this,SLOT(handleDisconnect()));
+   users<<user;
+   sendToClient(user, users);
 }
 void MyServer::handleDisconnect()
 {
@@ -69,32 +46,33 @@ void MyServer::handleDisconnect()
 
      for(int i=0;i<users.length();i++)
      {
-         if(sender==users[i].socket) {users.removeAt(i);break;}
-
+         if(sender==users[i].socket)
+         {
+             users.removeAt(i);
+             break;
+         }
      }
     usersTextEdit->clear();
-      for (User &user: users) {
-
-          usersTextEdit->append(user.name+",");
+    for (User &user: users)
+    {
+        usersTextEdit->append(user.name+",");
         sendToClient(user, users);
     }
 }
 void MyServer::slotReadClient()
 {
-    QTcpSocket* pClientSocket = (QTcpSocket*)sender();
-    QDataStream in(pClientSocket);
+    QTcpSocket* clientSocket = (QTcpSocket*)sender();
+    QDataStream in(clientSocket);
 
     in.setVersion(QDataStream::Qt_4_2);
        if (m_nNextBlockSize == 0) {
-               if (pClientSocket->bytesAvailable() < sizeof(quint64))
+               if (clientSocket->bytesAvailable() < sizeof(quint64))
                return;
                in >> m_nNextBlockSize;
            }
-           if (pClientSocket->bytesAvailable() < m_nNextBlockSize)
+           if (clientSocket->bytesAvailable() < m_nNextBlockSize)
                return;
-
-
-         int   mode;
+        int   mode;
         QTime   time;
         QString str;
         QString sender;
@@ -104,56 +82,22 @@ void MyServer::slotReadClient()
         case 4://Запрос на загрузку файла
         {
             int id;
-        in>>id;
-            sendFileToClient(pClientSocket, id);
+            in>>id;
+            sendFileToClient(clientSocket, id);
             break;
         }
         case 3: //Загружен файл
         {
-            //3<< QTime::currentTime()<<reciever<<name<<file->fileName()<<q;
             QString reciever;
             QString fileName;
             int size;
             in>>time>>sender>>reciever>>fileName>>size;
-
-
-
-           /* QString path = QFileDialog::getSaveFileName(this, "Сохранить файл", fileName);
-
-              QFile *file = new QFile(path);                            //Create the file
-               file->open(QIODevice::WriteOnly);                  //Open it
-
-           quint64 sizeread=0;
-           quint64 length=0;
-               //Download it in chunks, so the memory won't crash
-               char *data = new char[size];
-               length = pClientSocket->read(data, size);                //Buffer 1MB first, max.
-               file->write(data,length);
-               sizeread += length;
-               delete [] data;
-
-               if ((int)sizeread == size)                 //File size reached, closing file
-               {
-                   file->close();
-                   delete file;
-
-                   length=0;
-                   sizeread=0;
-               }*/
-           QByteArray q = pClientSocket->read(size);
-qDebug() <<q.size();
-
-
-
-
-         /*   QByteArray q = pClientSocket->readAll();
-             qDebug() <<q.size();*/
-
+           QByteArray q = clientSocket->read(size);
+            qDebug() <<q.size();
 
             int id= history.addToHistory(time,sender,reciever,fileName.section("/",-1),q);
             User user=findUserByName(reciever);
-        sendIdToClient(user, sender, fileName,id);
-
+            sendIdToClient(user, sender, fileName,id);
         QString strMessage =
             time.toString() + " " + sender+" отправил файл пользователю "+reciever+" :" + fileName.section("/",-1);
         chatLogTextEdit->append(strMessage);
@@ -164,7 +108,7 @@ qDebug() <<q.size();
             QString reciever;
             in>>sender;
             in>>reciever;
-            User u=findUserBySocket(pClientSocket);
+            User u=findUserBySocket(clientSocket);
             QList<Message> messages=history.getMessages(sender,reciever);
             sendToClient(u,messages);
             break;
@@ -175,13 +119,13 @@ qDebug() <<q.size();
              for (User &user: users)
                  if(user.name==sender)
                  {
-                     sendToClient(pClientSocket, false);
+                     sendToClient(clientSocket, false);
                      m_nNextBlockSize = 0;
                      return;
                  }
-                 sendToClient(pClientSocket, true);
+                 sendToClient(clientSocket, true);
             for (User &user: users) {
-                if(user.socket==pClientSocket)  user.name=sender;
+                if(user.socket==clientSocket)  user.name=sender;
 
             }
             usersTextEdit->clear();
@@ -198,20 +142,14 @@ qDebug() <<q.size();
             QString strMessage =
                 time.toString() + " " + sender+" отправил пользователю "+reciever+" :" + str;
             chatLogTextEdit->append(strMessage);
-
-            /*sendToClient(pClientSocket,
-                         "Server Response: Received \"" + str + "\""
-                        );*/
             User u=findUserByName(reciever);
             history.addToHistory(time,sender,reciever,str);
-            sendToClient(u,sender,str
-                        );
+            sendToClient(u,sender,str);
             break;
         }
 
         }
   m_nNextBlockSize = 0;
-
     }
 
 void MyServer::sendIdToClient(User user, QString sender, QString fileName, int id)

@@ -1,11 +1,13 @@
 #include <QFileDialog>
-
 #include <QWidget>
 #include <QTime>
 #include <QTcpServer.h>
 #include <QTextEdit.h>
 #include <QTcpSocket.h>
-
+#include <QMessageBox>
+#include <QLayout>
+#include <QLabel>
+#include <QTime>
 class User
 {
 public:
@@ -37,18 +39,14 @@ public:
 class MyServer : public QWidget {
 Q_OBJECT
 public:
+    MyServer(int nPort, QWidget* pwgt = 0);
+private:
+    History history;
     QList<User> users;
-    QTcpServer* m_ptcpServer;
-
+    QTcpServer* server;
     QTextEdit*  usersTextEdit;
     QTextEdit*  chatLogTextEdit;
     quint64     m_nNextBlockSize;
-    MyServer(int nPort, QWidget* pwgt = 0);
-int bytes=0;
-
-private:
-    History history;
-
 void sendToClient(QTcpSocket* pSocket, const QString& str);
 void sendToClient(QList<User> list, const QString& str);
 void sendToClient(User user, QList<User> list);
