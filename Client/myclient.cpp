@@ -16,8 +16,10 @@ MyClient::MyClient(
            );
 
     m_ptxtInfo  = new QTextBrowser;
-    m_ptxtInfo->setOpenLinks(false);
-    m_ptxtInfo->setOpenExternalLinks(false);
+    m_ptxtInfo->setOpenLinks(0);
+    //m_ptxtInfo->setOpenExternalLinks(0);
+  //  m_ptxtInfo->setSource(QtCore.QUrl());
+
     connect(m_ptxtInfo, &QTextBrowser::anchorClicked, this, onAnchorClicked);
     m_ptxtInput = new QLineEdit;
     nameLabel=new QLabel("<H2>Список контактов:<\/H2>");
@@ -25,7 +27,7 @@ m_ptxtInput->setReadOnly(true);
     connect(m_ptxtInput, SIGNAL(returnPressed()),
             this,        SLOT(slotSendToServer())
            );
-    m_ptxtInfo->setReadOnly(true);
+
 
     pcmd = new QPushButton("Отправить");
     connect(pcmd, SIGNAL(clicked()), SLOT(slotSendToServer()));
@@ -89,21 +91,21 @@ void MyClient::addFile()
   QByteArray  arrBlock;
   QDataStream out(&arrBlock, QIODevice::WriteOnly);
   out.setVersion(QDataStream::Qt_4_2);
-  out << quint16(0) <<3<< QTime::currentTime()<<name<<reciever<<file->fileName();
+  out << quint64(0) <<3<< QTime::currentTime()<<name<<reciever<<file->fileName()<<q.size();
   //
 arrBlock.append(q);
  file->close();
 
-  m_ptxtInfo->append("Отправлен файл "+file->fileName().section("/",-1));
+  m_ptxtInfo->append("<span>"+"Отправлен файл "+file->fileName().section("/",-1)+"</span>");
   m_ptxtInfo->setAlignment(Qt::AlignRight);
 
   //
   out.device()->seek(0);
-  out << quint16(arrBlock.size() - sizeof(quint16));
+  out << quint64(arrBlock.size() - sizeof(quint64));
 
   m_pTcpSocket->write(arrBlock);
 
-  qDebug()<<q.size();
+  qDebug()<<arrBlock.size();
 }
 void MyClient::slotChangeUser()
 {
@@ -136,7 +138,7 @@ void MyClient::slotReadyRead()
     in.setVersion(QDataStream::Qt_4_2);
     for (;;) {
         if (!m_nNextBlockSize) {
-            if (m_pTcpSocket->bytesAvailable() < sizeof(quint16)) {
+            if (m_pTcpSocket->bytesAvailable() < sizeof(quint64)) {
                 break;
             }
             in >> m_nNextBlockSize;
@@ -159,7 +161,7 @@ void MyClient::slotReadyRead()
             in >> time >>sender>> str;
             if(sender==reciever)
             {
-                        m_ptxtInfo->append(time.toString() + " " +sender+": "+ str);
+                        m_ptxtInfo->append("<span>"+time.toString() + " " +sender+": "+ str+"</span>");
                         m_ptxtInfo->setAlignment(Qt::AlignLeft);
             }
 else
@@ -205,7 +207,7 @@ else
             {
                  if(fileName=="")
                  {
-                  m_ptxtInfo->append(time + " " +sender+": "+ text);
+                  m_ptxtInfo->append("<span>"+time + " " +sender+": "+ text+"</span>");
                   m_ptxtInfo->setAlignment(Qt::AlignLeft);
                  }
                  else
@@ -289,8 +291,10 @@ else
         case 4:// Получение файлов
         {
             QString fileName;
-            in>>fileName;
-            QByteArray q = m_pTcpSocket->readAll();
+            int size;
+            in>>fileName>>size;
+            QByteArray q = m_pTcpSocket->read(size);
+           // QByteArray q = m_pTcpSocket->readAll();
             qDebug()<<q.size();
 
            QString filePath = QFileDialog::getSaveFileName(this, "Сохранить файл", fileName);
@@ -346,14 +350,14 @@ void MyClient::slotSendToServer()// обычное сообщение
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) <<0<< QTime::currentTime()<<reciever<<name<< m_ptxtInput->text();
+    out << quint64(0) <<0<< QTime::currentTime()<<reciever<<name<< m_ptxtInput->text();
     //
     m_ptxtInfo->append(m_ptxtInput->text());
     m_ptxtInfo->setAlignment(Qt::AlignRight);
 
     //
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     m_pTcpSocket->write(arrBlock);
     m_ptxtInput->setText("");
@@ -363,10 +367,10 @@ void MyClient::sendNameToServer()
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) <<1<<name;
+    out << quint64(0) <<1<<name;
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     m_pTcpSocket->write(arrBlock);
 
@@ -377,11 +381,11 @@ void MyClient::getListOfUsers()
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
 
-    out << quint16(0) <<1<<name;// 1- запрос списка контактов
+    out << quint64(0) <<1<<name;// 1- запрос списка контактов
 
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     m_pTcpSocket->write(arrBlock);
 
@@ -392,11 +396,11 @@ void MyClient::getHistory(QString user)
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
 
-    out << quint16(0) <<2<<user<<name;// 2- запрос истории
+    out << quint64(0) <<2<<user<<name;// 2- запрос истории
 
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     m_pTcpSocket->write(arrBlock);
 
@@ -420,16 +424,17 @@ void MyClient::slotRecieveData(QList<QString> list)
 }
 void MyClient::onAnchorClicked(const QUrl &url)
 {
+
 QString str=url.toEncoded();
 str=str.section("/",-1);
 int id=str.toInt();
 QByteArray  arrBlock;
 QDataStream out(&arrBlock, QIODevice::WriteOnly);
 out.setVersion(QDataStream::Qt_4_2);
-out << quint16(0) <<4<<id;
+out << quint64(0)<<4<<id;
 
 out.device()->seek(0);
-out << quint16(arrBlock.size() - sizeof(quint16));
+out << quint64(arrBlock.size() - sizeof(quint64));
 
 m_pTcpSocket->write(arrBlock);
 

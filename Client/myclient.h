@@ -25,7 +25,7 @@ private:
     QTcpSocket* m_pTcpSocket;
     QTextBrowser*  m_ptxtInfo;
     QLineEdit*  m_ptxtInput;
-    quint16     m_nNextBlockSize;
+    quint64     m_nNextBlockSize;
     QString     name;
     QLabel *nameLabel;
     QList<QString> userList;

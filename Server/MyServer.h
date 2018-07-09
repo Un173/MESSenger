@@ -42,9 +42,9 @@ public:
 
     QTextEdit*  usersTextEdit;
     QTextEdit*  chatLogTextEdit;
-    quint16     m_nNextBlockSize;
+    quint64     m_nNextBlockSize;
     MyServer(int nPort, QWidget* pwgt = 0);
-
+int bytes=0;
 
 private:
     History history;

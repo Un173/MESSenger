@@ -83,18 +83,16 @@ void MyServer::slotReadClient()
 {
     QTcpSocket* pClientSocket = (QTcpSocket*)sender();
     QDataStream in(pClientSocket);
-    in.setVersion(QDataStream::Qt_4_2);
-    for (;;) {
-        if (!m_nNextBlockSize) {
-            if (pClientSocket->bytesAvailable() < sizeof(quint16)) {
-                break;
-            }
-            in >> m_nNextBlockSize;
-        }
 
-        if (pClientSocket->bytesAvailable() < m_nNextBlockSize) {
-            break;
-        }
+    in.setVersion(QDataStream::Qt_4_2);
+       if (m_nNextBlockSize == 0) {
+               if (pClientSocket->bytesAvailable() < sizeof(quint64))
+               return;
+               in >> m_nNextBlockSize;
+           }
+           if (pClientSocket->bytesAvailable() < m_nNextBlockSize)
+               return;
+
 
          int   mode;
         QTime   time;
@@ -115,9 +113,43 @@ void MyServer::slotReadClient()
             //3<< QTime::currentTime()<<reciever<<name<<file->fileName()<<q;
             QString reciever;
             QString fileName;
-            in>>time>>sender>>reciever>>fileName;
-            QByteArray q = pClientSocket->readAll();
-             qDebug() <<q.size();
+            int size;
+            in>>time>>sender>>reciever>>fileName>>size;
+
+
+
+           /* QString path = QFileDialog::getSaveFileName(this, "Сохранить файл", fileName);
+
+              QFile *file = new QFile(path);                            //Create the file
+               file->open(QIODevice::WriteOnly);                  //Open it
+
+           quint64 sizeread=0;
+           quint64 length=0;
+               //Download it in chunks, so the memory won't crash
+               char *data = new char[size];
+               length = pClientSocket->read(data, size);                //Buffer 1MB first, max.
+               file->write(data,length);
+               sizeread += length;
+               delete [] data;
+
+               if ((int)sizeread == size)                 //File size reached, closing file
+               {
+                   file->close();
+                   delete file;
+
+                   length=0;
+                   sizeread=0;
+               }*/
+           QByteArray q = pClientSocket->read(size);
+qDebug() <<q.size();
+
+
+
+
+         /*   QByteArray q = pClientSocket->readAll();
+             qDebug() <<q.size();*/
+
+
             int id= history.addToHistory(time,sender,reciever,fileName.section("/",-1),q);
             User user=findUserByName(reciever);
         sendIdToClient(user, sender, fileName,id);
@@ -178,18 +210,18 @@ void MyServer::slotReadClient()
         }
 
         }
+  m_nNextBlockSize = 0;
 
-         m_nNextBlockSize = 0;
     }
-}
+
 void MyServer::sendIdToClient(User user, QString sender, QString fileName, int id)
 {
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) <<3<< QTime::currentTime() <<sender<<fileName<< id;
+    out << quint64(0) <<3<< QTime::currentTime() <<sender<<fileName<< id;
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     user.socket->write(arrBlock);
 }
@@ -198,10 +230,11 @@ void MyServer::sendFileToClient(QTcpSocket* pClientSocket, int id)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0)<<4<<m.fileName;
+    out << quint64(0)<<4<<m.fileName<<m.file.size();
     arrBlock.append(m.file);
+    qDebug()<<m.file.size();
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
     pClientSocket->write(arrBlock);
 }
 void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
@@ -209,10 +242,10 @@ void MyServer::sendToClient(QTcpSocket* pSocket, const QString& str)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) << QTime::currentTime() << str;
+    out << quint64(0) << QTime::currentTime() << str;
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     pSocket->write(arrBlock);
 }
@@ -221,10 +254,10 @@ void MyServer::sendToClient(User user,const QString&sender, const QString& str)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0) <<0<< QTime::currentTime() <<sender<< str;
+    out << quint64(0) <<0<< QTime::currentTime() <<sender<< str;
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     user.socket->write(arrBlock);
 }
@@ -234,7 +267,7 @@ void MyServer::sendToClient(User user, QList<User> list)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0)<<2;//режим отправки контактов
+    out << quint64(0)<<2;//режим отправки контактов
 QList<QString> names;
     foreach (User u, list)
     {
@@ -243,7 +276,7 @@ QList<QString> names;
     }
      out<<names;
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
     user.socket->write(arrBlock);
 
@@ -255,7 +288,7 @@ void MyServer::sendToClient(User user, QList<Message> list)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0)<<1;//режим отправки истории
+    out << quint64(0)<<1;//режим отправки истории
    QList<QList<QString>> result;
    foreach (Message m, list) {
        QList<QString> l;
@@ -264,7 +297,7 @@ void MyServer::sendToClient(User user, QList<Message> list)
    }
     out<<result;
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
     user.socket->write(arrBlock);
 
 }
@@ -274,10 +307,10 @@ void MyServer::sendToClient(QTcpSocket* pSocket, bool mode)
     QByteArray  arrBlock;
     QDataStream out(&arrBlock, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_4_2);
-    out << quint16(0)<<-1<<mode;//режим подтверждения логина
+    out << quint64(0)<<-1<<mode;//режим подтверждения логина
 
     out.device()->seek(0);
-    out << quint16(arrBlock.size() - sizeof(quint16));
+    out << quint64(arrBlock.size() - sizeof(quint64));
 
    pSocket->write(arrBlock);
 
